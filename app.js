@@ -1,8 +1,14 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycbwLbAQhjBLCPa3x9JXppMIV6VL-Qad0QkT4yzKpBA74cI23wtNXx6lCnBF86V1yS2kInQ/exec';
+const REQUEST_TIMEOUT_MS = 25000;
+const STUDENT_ID_STORAGE_KEY = 'healthyFoodTracker.studentId';
+
+let toastTimer = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   updateDateTime();
   setInterval(updateDateTime, 1000);
+  restoreStudentId();
+  bindInputEvents();
 });
 
 function updateDateTime() {
@@ -46,6 +52,59 @@ function showPage(pageName) {
   if (pageName === 'log' && navButtons[0]) navButtons[0].classList.add('active');
   if (pageName === 'history' && navButtons[1]) navButtons[1].classList.add('active');
   if (pageName === 'summary' && navButtons[2]) navButtons[2].classList.add('active');
+
+  fillStudentIdFilter(pageName);
+}
+
+function restoreStudentId() {
+  const storedStudentId = localStorage.getItem(STUDENT_ID_STORAGE_KEY) || '';
+  const studentIdInput = document.getElementById('studentId');
+
+  if (studentIdInput && storedStudentId) {
+    studentIdInput.value = storedStudentId;
+  }
+}
+
+function bindInputEvents() {
+  const studentIdInput = document.getElementById('studentId');
+  const foodNameInput = document.getElementById('foodName');
+
+  if (studentIdInput) {
+    studentIdInput.addEventListener('input', () => {
+      const studentId = studentIdInput.value.trim();
+
+      if (studentId) {
+        localStorage.setItem(STUDENT_ID_STORAGE_KEY, studentId);
+      }
+    });
+  }
+
+  if (foodNameInput) {
+    foodNameInput.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        saveFoodLog();
+      }
+    });
+  }
+}
+
+function fillStudentIdFilter(pageName) {
+  const studentId = document.getElementById('studentId')?.value.trim();
+
+  if (!studentId) {
+    return;
+  }
+
+  if (pageName === 'history') {
+    const filterStudentId = document.getElementById('filterStudentId');
+    if (filterStudentId && !filterStudentId.value.trim()) filterStudentId.value = studentId;
+  }
+
+  if (pageName === 'summary') {
+    const summaryStudentId = document.getElementById('summaryStudentId');
+    if (summaryStudentId && !summaryStudentId.value.trim()) summaryStudentId.value = studentId;
+  }
 }
 
 function getRadioValue(name) {
@@ -54,20 +113,51 @@ function getRadioValue(name) {
 }
 
 async function apiRequest(payload) {
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    redirect: 'follow',
-    headers: {
-      'Content-Type': 'text/plain;charset=utf-8'
-    },
-    body: JSON.stringify(payload)
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-  const result = await response.json();
-  return result;
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      credentials: 'omit',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8'
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+
+    const text = await response.text();
+    let result = null;
+
+    try {
+      result = JSON.parse(text);
+    } catch (error) {
+      throw new Error('API ไม่ได้ส่งข้อมูล JSON กลับมา กรุณาตรวจสอบการ Deploy Web App');
+    }
+
+    if (!response.ok) {
+      throw new Error(result.message || `เชื่อมต่อ API ไม่สำเร็จ (${response.status})`);
+    }
+
+    return result;
+
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error('เชื่อมต่อฐานข้อมูลช้าเกินไป กรุณาลองอีกครั้ง');
+    }
+
+    throw error;
+
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function saveFoodLog() {
+  const saveButton = document.getElementById('saveButton');
+
   try {
     const studentId = document.getElementById('studentId').value.trim();
     const foodName = document.getElementById('foodName').value.trim();
@@ -82,6 +172,9 @@ async function saveFoodLog() {
       showToast('กรุณากรอกชื่ออาหาร', 'error');
       return;
     }
+
+    localStorage.setItem(STUDENT_ID_STORAGE_KEY, studentId);
+    setButtonLoading(saveButton, true, 'กำลังบันทึก...');
 
     const payload = {
       action: 'create',
@@ -101,18 +194,24 @@ async function saveFoodLog() {
       return;
     }
 
-    showToast('บันทึกอาหารสำเร็จ', 'success');
+    showToast(result.message || 'บันทึกอาหารสำเร็จ', 'success');
 
     document.getElementById('foodName').value = '';
     document.getElementById('note').value = '';
+    document.getElementById('foodName').focus();
 
   } catch (error) {
     console.error(error);
-    showToast('เชื่อมต่อฐานข้อมูลไม่สำเร็จ', 'error');
+    showToast(error.message || 'เชื่อมต่อฐานข้อมูลไม่สำเร็จ', 'error');
+
+  } finally {
+    setButtonLoading(saveButton, false);
   }
 }
 
 async function loadHistory() {
+  const historyButton = document.getElementById('historyButton');
+
   try {
     const filterStudentId = document.getElementById('filterStudentId').value.trim();
     const studentIdFromMain = document.getElementById('studentId').value.trim();
@@ -122,6 +221,10 @@ async function loadHistory() {
       showToast('กรุณากรอกรหัสนักเรียน', 'error');
       return;
     }
+
+    localStorage.setItem(STUDENT_ID_STORAGE_KEY, studentId);
+    document.getElementById('filterStudentId').value = studentId;
+    setButtonLoading(historyButton, true, 'กำลังโหลด...');
 
     const result = await apiRequest({
       action: 'history',
@@ -137,7 +240,11 @@ async function loadHistory() {
 
   } catch (error) {
     console.error(error);
-    showToast('โหลดประวัติไม่สำเร็จ', 'error');
+    renderError('historyList', 'โหลดประวัติไม่สำเร็จ');
+    showToast(error.message || 'โหลดประวัติไม่สำเร็จ', 'error');
+
+  } finally {
+    setButtonLoading(historyButton, false);
   }
 }
 
@@ -155,18 +262,20 @@ function renderHistory(items) {
   }
 
   historyList.innerHTML = items.map(item => `
-    <div class="history-card" style="background:#fff;border-radius:18px;padding:16px;margin-bottom:12px;box-shadow:0 8px 20px rgba(0,0,0,.08);">
-      <div style="font-weight:700;font-size:18px;">🍜 ${escapeHtml(item.foodName)}</div>
-      <div style="margin-top:6px;color:#555;">🎒 รหัสนักเรียน: ${escapeHtml(item.studentId)}</div>
-      <div style="margin-top:6px;color:#555;">📅 ${escapeHtml(item.date)} ⏰ ${escapeHtml(item.time)}</div>
-      <div style="margin-top:6px;color:#555;">🍽️ มื้อ: ${escapeHtml(item.mealType)} | 👨‍🍳 วิธีทำ: ${escapeHtml(item.cookingType)}</div>
-      <div style="margin-top:6px;color:#555;">🍬 ความหวาน: ${escapeHtml(item.sweetnessLevel)} | 🥤 เครื่องดื่ม: ${escapeHtml(item.drinkType)}</div>
-      ${item.note ? `<div style="margin-top:8px;color:#555;">📝 ${escapeHtml(item.note)}</div>` : ''}
+    <div class="history-card">
+      <div class="history-food">🍜 ${escapeHtml(item.foodName)}</div>
+      <div class="history-meta">🎒 รหัสนักเรียน: ${escapeHtml(item.studentId)}</div>
+      <div class="history-meta">📅 ${escapeHtml(item.date)} ⏰ ${escapeHtml(item.time)}</div>
+      <div class="history-meta">🍽️ มื้อ: ${escapeHtml(item.mealType)} | 👨‍🍳 วิธีทำ: ${escapeHtml(item.cookingType)}</div>
+      <div class="history-meta">🍬 ความหวาน: ${escapeHtml(item.sweetnessLevel)} | 🥤 เครื่องดื่ม: ${escapeHtml(item.drinkType)}</div>
+      ${item.note ? `<div class="history-note">📝 ${escapeHtml(item.note)}</div>` : ''}
     </div>
   `).join('');
 }
 
 async function loadSummary() {
+  const summaryButton = document.getElementById('summaryButton');
+
   try {
     const summaryStudentId = document.getElementById('summaryStudentId').value.trim();
     const studentIdFromMain = document.getElementById('studentId').value.trim();
@@ -176,6 +285,10 @@ async function loadSummary() {
       showToast('กรุณากรอกรหัสนักเรียน', 'error');
       return;
     }
+
+    localStorage.setItem(STUDENT_ID_STORAGE_KEY, studentId);
+    document.getElementById('summaryStudentId').value = studentId;
+    setButtonLoading(summaryButton, true, 'กำลังโหลด...');
 
     const result = await apiRequest({
       action: 'summary',
@@ -191,7 +304,11 @@ async function loadSummary() {
 
   } catch (error) {
     console.error(error);
-    showToast('โหลดสรุปไม่สำเร็จ', 'error');
+    renderError('summaryContent', 'โหลดสรุปไม่สำเร็จ');
+    showToast(error.message || 'โหลดสรุปไม่สำเร็จ', 'error');
+
+  } finally {
+    setButtonLoading(summaryButton, false);
   }
 }
 
@@ -209,9 +326,9 @@ function renderSummary(summary) {
   }
 
   summaryContent.innerHTML = `
-    <div style="background:#fff;border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:0 8px 20px rgba(0,0,0,.08);">
-      <h2 style="margin-bottom:10px;">📊 สรุปการกินอาหาร</h2>
-      <p style="font-size:18px;font-weight:700;">บันทึกทั้งหมด: ${summary.total} รายการ</p>
+    <div class="summary-card">
+      <h2>📊 สรุปการกินอาหาร</h2>
+      <p class="summary-total">บันทึกทั้งหมด: ${summary.total} รายการ</p>
     </div>
 
     ${renderCountGroup('🍽️ สรุปตามมื้ออาหาร', summary.byMealType)}
@@ -222,23 +339,51 @@ function renderSummary(summary) {
 }
 
 function renderCountGroup(title, data) {
-  const rows = Object.entries(data || {});
+  const rows = Object.entries(data || {}).sort((a, b) => b[1] - a[1]);
 
   if (!rows.length) {
     return '';
   }
 
   return `
-    <div style="background:#fff;border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:0 8px 20px rgba(0,0,0,.08);">
-      <h3 style="margin-bottom:10px;">${title}</h3>
+    <div class="summary-card">
+      <h3>${title}</h3>
       ${rows.map(([name, count]) => `
-        <div style="display:flex;justify-content:space-between;border-bottom:1px solid #eee;padding:8px 0;">
+        <div class="summary-row">
           <span>${escapeHtml(name)}</span>
           <strong>${count} ครั้ง</strong>
         </div>
       `).join('')}
     </div>
   `;
+}
+
+function renderError(containerId, message) {
+  const container = document.getElementById(containerId);
+
+  if (!container) {
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="empty-state error-state">
+      <div class="es-emoji">⚠️</div>
+      <p>${escapeHtml(message)}</p>
+    </div>
+  `;
+}
+
+function setButtonLoading(button, isLoading, loadingText) {
+  if (!button) {
+    return;
+  }
+
+  if (!button.dataset.defaultText) {
+    button.dataset.defaultText = button.textContent.trim();
+  }
+
+  button.disabled = isLoading;
+  button.textContent = isLoading ? loadingText : button.dataset.defaultText;
 }
 
 function showToast(message, type) {
@@ -249,19 +394,23 @@ function showToast(message, type) {
     return;
   }
 
+  if (toastTimer) {
+    clearTimeout(toastTimer);
+  }
+
   toast.textContent = message;
   toast.className = 'toast show ' + (type || 'success');
 
-  setTimeout(() => {
+  toastTimer = setTimeout(() => {
     toast.className = 'toast';
   }, 3000);
 }
 
 function escapeHtml(value) {
   return String(value || '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }

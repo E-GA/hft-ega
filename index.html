@@ -19,15 +19,15 @@
     </div>
 
     <div class="nav">
-      <button class="active" onclick="showPage('log')">
+      <button type="button" class="active" onclick="showPage('log')">
         ✏️<br />
         บันทึกอาหาร
       </button>
-      <button onclick="showPage('history')">
+      <button type="button" onclick="showPage('history')">
         📋<br />
         ประวัติ
       </button>
-      <button onclick="showPage('summary')">
+      <button type="button" onclick="showPage('summary')">
         📊<br />
         สรุป
       </button>
@@ -40,8 +40,15 @@
     <div class="content">
       <div class="page active" id="page-log">
         <div class="id-bar">
-          <label>🎒 รหัสนักเรียน</label>
-          <input type="text" id="studentId" placeholder="เช่น S001" maxlength="20" />
+          <label>🎒 ผู้รายงานระบบ</label>
+          <input
+            type="text"
+            id="studentId"
+            placeholder="จร์อสบรูช"
+            maxlength="20"
+            autocomplete="off"
+            required
+          />
         </div>
 
         <div class="dt-row">
@@ -84,6 +91,9 @@
             class="text-input"
             id="foodName"
             placeholder="เช่น ข้าวต้ม, ผัดกะเพรา, ก๋วยเตี๋ยว..."
+            maxlength="120"
+            autocomplete="off"
+            required
           />
         </div>
 
@@ -183,16 +193,27 @@
             class="text-input"
             id="note"
             placeholder="เช่น เพิ่มผัก / ลดน้ำหวาน / กินผลไม้ด้วย..."
+            maxlength="500"
           ></textarea>
         </div>
 
-        <button class="btn-save" onclick="saveFoodLog()">💾 บันทึกอาหาร</button>
+        <button type="button" class="btn-save" id="saveButton" onclick="saveFoodLog()">
+          💾 บันทึกอาหาร
+        </button>
       </div>
 
       <div class="page" id="page-history">
         <div class="filter-row">
-          <input type="text" id="filterStudentId" placeholder="🔍 ค้นหาด้วยรหัสนักเรียน..." />
-          <button class="btn-load" onclick="loadHistory()">โหลด</button>
+          <input
+            type="text"
+            id="filterStudentId"
+            placeholder="🔍 ค้นหาด้วยรหัสนักเรียน..."
+            maxlength="20"
+            autocomplete="off"
+          />
+          <button type="button" class="btn-load" id="historyButton" onclick="loadHistory()">
+            โหลด
+          </button>
         </div>
         <div id="historyList">
           <div class="empty-state">
@@ -204,8 +225,16 @@
 
       <div class="page" id="page-summary">
         <div class="filter-row">
-          <input type="text" id="summaryStudentId" placeholder="🔍 รหัสนักเรียน..." />
-          <button class="btn-load" onclick="loadSummary()">โหลด</button>
+          <input
+            type="text"
+            id="summaryStudentId"
+            placeholder="🔍 รหัสนักเรียน..."
+            maxlength="20"
+            autocomplete="off"
+          />
+          <button type="button" class="btn-load" id="summaryButton" onclick="loadSummary()">
+            โหลด
+          </button>
         </div>
         <div id="summaryContent">
           <div class="empty-state">
@@ -216,7 +245,7 @@
       </div>
     </div>
 
-    <div class="toast" id="toast"></div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="app.js"></script>
   </body>
 </html>

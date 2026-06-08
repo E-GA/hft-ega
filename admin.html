@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin | Student Healthy Food Tracker</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="admin.css" />
+  </head>
+  <body>
+    <section class="login-screen" id="loginScreen">
+      <form class="login-card" id="loginForm">
+        <div class="login-mark">🍱</div>
+        <p class="eyebrow">Admin</p>
+        <h1>จัดการรายการอาหาร</h1>
+        <p class="login-copy">เข้าสู่ระบบด้วย PIN เพื่อแก้ไขหรือลบรายการที่บันทึกไว้</p>
+        <label for="adminPin">PIN แอดมิน</label>
+        <input
+          type="password"
+          id="adminPin"
+          inputmode="numeric"
+          autocomplete="current-password"
+          placeholder="กรอก PIN"
+          required
+        />
+        <button type="submit" class="primary-btn" id="loginButton">เข้าสู่ระบบ</button>
+        <a class="back-link" href="index.html">กลับหน้าบันทึกอาหาร</a>
+      </form>
+    </section>
+
+    <section class="admin-app hidden" id="adminApp">
+      <header class="admin-header">
+        <div>
+          <p class="eyebrow">Food Logs Admin</p>
+          <h1>รายการอาหารทั้งหมด</h1>
+          <p>ค้นหา แก้ไข และลบข้อมูลอาหารที่บันทึกใน Google Sheet</p>
+        </div>
+        <nav class="admin-nav">
+          <a href="index.html">บันทึกอาหาร</a>
+          <a href="dashboard.html">Dashboard</a>
+          <button type="button" id="logoutButton">ออกจากระบบ</button>
+        </nav>
+      </header>
+
+      <main class="admin-shell">
+        <section class="toolbar">
+          <div class="search-box">
+            <label for="searchInput">ค้นหารายการ</label>
+            <input
+              type="search"
+              id="searchInput"
+              placeholder="รหัสนักเรียน ชื่ออาหาร มื้ออาหาร วันที่..."
+              autocomplete="off"
+            />
+          </div>
+          <button type="button" class="secondary-btn" id="searchButton">ค้นหา</button>
+          <button type="button" class="primary-btn" id="refreshButton">โหลดใหม่</button>
+        </section>
+
+        <section class="status-card">
+          <div>
+            <span class="status-dot"></span>
+            <span id="statusText">พร้อมใช้งาน</span>
+          </div>
+          <strong id="recordCount">0 รายการ</strong>
+        </section>
+
+        <section class="records-panel">
+          <div class="records-head">
+            <span>ข้อมูลอาหาร</span>
+            <span>การจัดการ</span>
+          </div>
+          <div class="record-list" id="recordList"></div>
+        </section>
+      </main>
+    </section>
+
+    <dialog class="edit-dialog" id="editDialog">
+      <form method="dialog" class="edit-form" id="editForm">
+        <div class="dialog-head">
+          <div>
+            <p class="eyebrow">Edit</p>
+            <h2>แก้ไขรายการอาหาร</h2>
+          </div>
+          <button type="button" class="icon-btn" id="closeEditButton" aria-label="ปิด">×</button>
+        </div>
+
+        <input type="hidden" id="editId" />
+
+        <div class="form-grid">
+          <label>
+            รหัสนักเรียน
+            <input type="text" id="editStudentId" maxlength="20" required />
+          </label>
+          <label>
+            วันที่
+            <input type="date" id="editDate" required />
+          </label>
+          <label>
+            เวลา
+            <input type="time" id="editTime" required />
+          </label>
+          <label>
+            มื้ออาหาร
+            <select id="editMealType"></select>
+          </label>
+          <label class="wide">
+            ชื่ออาหาร
+            <input type="text" id="editFoodName" maxlength="120" required />
+          </label>
+          <label>
+            วิธีทำอาหาร
+            <select id="editCookingType"></select>
+          </label>
+          <label>
+            ระดับความหวาน
+            <select id="editSweetnessLevel"></select>
+          </label>
+          <label>
+            เครื่องดื่ม
+            <select id="editDrinkType"></select>
+          </label>
+          <label class="wide">
+            หมายเหตุ
+            <textarea id="editNote" maxlength="500" rows="4"></textarea>
+          </label>
+        </div>
+
+        <div class="dialog-actions">
+          <button type="button" class="secondary-btn" id="cancelEditButton">ยกเลิก</button>
+          <button type="submit" class="primary-btn" id="saveEditButton">บันทึกการแก้ไข</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script>
+      const API_URL = 'https://script.google.com/macros/s/AKfycbwLbAQhjBLCPa3x9JXppMIV6VL-Qad0QkT4yzKpBA74cI23wtNXx6lCnBF86V1yS2kInQ/exec';
+      const REQUEST_TIMEOUT_MS = 25000;
+      const ADMIN_PIN_KEY = 'healthyFoodTracker.adminPin';
+
+      const MEAL_TYPES = ['เช้า', 'กลางวัน', 'เย็น', 'ของว่าง'];
+      const COOKING_TYPES = ['ต้ม', 'นึ่ง', 'ย่าง', 'ผัด', 'ทอด', 'อบ', 'อื่น ๆ'];
+      const SWEETNESS_LEVELS = ['ไม่หวาน', 'หวานน้อย', 'หวานปกติ', 'หวานมาก'];
+      const DRINK_TYPES = ['น้ำเปล่า', 'นม', 'น้ำหวาน', 'น้ำอัดลม', 'ชานม', 'กาแฟ', 'อื่น ๆ'];
+
+      const state = {
+        adminPin: '',
+        records: []
+      };
+
+      let toastTimer = null;
+
+      document.addEventListener('DOMContentLoaded', () => {
+        bindEvents();
+        fillSelects();
+        restoreSession();
+      });
+
+      function bindEvents() {
+        document.getElementById('loginForm').addEventListener('submit', handleLogin);
+        document.getElementById('logoutButton').addEventListener('click', logout);
+        document.getElementById('searchButton').addEventListener('click', loadRecords);
+        document.getElementById('refreshButton').addEventListener('click', () => {
+          document.getElementById('searchInput').value = '';
+          loadRecords();
+        });
+        document.getElementById('searchInput').addEventListener('keydown', event => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            loadRecords();
+          }
+        });
+        document.getElementById('recordList').addEventListener('click', handleRecordAction);
+        document.getElementById('editForm').addEventListener('submit', saveEdit);
+        document.getElementById('closeEditButton').addEventListener('click', closeEditDialog);
+        document.getElementById('cancelEditButton').addEventListener('click', closeEditDialog);
+      }
+
+      function fillSelects() {
+        fillSelect('editMealType', MEAL_TYPES);
+        fillSelect('editCookingType', COOKING_TYPES);
+        fillSelect('editSweetnessLevel', SWEETNESS_LEVELS);
+        fillSelect('editDrinkType', DRINK_TYPES);
+      }
+
+      function fillSelect(id, values) {
+        document.getElementById(id).innerHTML = values
+          .map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
+          .join('');
+      }
+
+      function restoreSession() {
+        const storedPin = sessionStorage.getItem(ADMIN_PIN_KEY) || '';
+
+        if (storedPin) {
+          state.adminPin = storedPin;
+          showAdminApp();
+          loadRecords();
+        }
+      }
+
+      async function handleLogin(event) {
+        event.preventDefault();
+
+        const pinInput = document.getElementById('adminPin');
+        const loginButton = document.getElementById('loginButton');
+        const pin = pinInput.value.trim();
+
+        if (!pin) {
+          showToast('กรุณากรอก PIN', 'error');
+          return;
+        }
+
+        setButtonLoading(loginButton, true, 'กำลังเข้าสู่ระบบ...');
+
+        try {
+          const result = await apiRequest({
+            action: 'adminLogin',
+            adminPin: pin
+          });
+
+          if (!result.ok) {
+            throw new Error(result.message || 'เข้าสู่ระบบไม่สำเร็จ');
+          }
+
+          state.adminPin = pin;
+          sessionStorage.setItem(ADMIN_PIN_KEY, pin);
+          pinInput.value = '';
+          showAdminApp();
+          showToast('เข้าสู่ระบบสำเร็จ', 'success');
+          loadRecords();
+
+        } catch (error) {
+          console.error(error);
+          showToast(error.message || 'เข้าสู่ระบบไม่สำเร็จ', 'error');
+
+        } finally {
+          setButtonLoading(loginButton, false);
+        }
+      }
+
+      function showAdminApp() {
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('adminApp').classList.remove('hidden');
+      }
+
+      function logout() {
+        state.adminPin = '';
+        state.records = [];
+        sessionStorage.removeItem(ADMIN_PIN_KEY);
+        document.getElementById('adminApp').classList.add('hidden');
+        document.getElementById('loginScreen').classList.remove('hidden');
+        document.getElementById('adminPin').focus();
+      }
+
+      async function loadRecords() {
+        const search = document.getElementById('searchInput').value.trim();
+        const searchButton = document.getElementById('searchButton');
+        const refreshButton = document.getElementById('refreshButton');
+
+        setButtonLoading(searchButton, true, 'กำลังค้นหา...');
+        setButtonLoading(refreshButton, true, 'กำลังโหลด...');
+        setStatus('กำลังโหลดรายการอาหาร...', 'loading');
+
+        try {
+          const result = await adminRequest({
+            action: 'adminList',
+            search: search,
+            limit: 500
+          });
+
+          if (!result.ok) {
+            throw new Error(result.message || 'โหลดรายการไม่สำเร็จ');
+          }
+
+          state.records = result.data || [];
+          renderRecords();
+          setStatus('โหลดข้อมูลสำเร็จ', 'ready');
+
+        } catch (error) {
+          console.error(error);
+          renderRecords([]);
+          setStatus(error.message || 'โหลดรายการไม่สำเร็จ', 'error');
+          showToast(error.message || 'โหลดรายการไม่สำเร็จ', 'error');
+
+        } finally {
+          setButtonLoading(searchButton, false);
+          setButtonLoading(refreshButton, false);
+        }
+      }
+
+      function renderRecords(records = state.records) {
+        const recordList = document.getElementById('recordList');
+        document.getElementById('recordCount').textContent = `${records.length} รายการ`;
+
+        if (!records.length) {
+          recordList.innerHTML = `
+            <div class="empty-state">
+              <strong>ยังไม่มีรายการอาหาร</strong>
+              <span>ลองค้นหาด้วยคำอื่น หรือกลับไปบันทึกอาหารก่อน</span>
+            </div>
+          `;
+          return;
+        }
+
+        recordList.innerHTML = records.map(record => `
+          <article class="record-row">
+            <div class="record-main">
+              <strong>${escapeHtml(record.foodName)}</strong>
+              <span>${escapeHtml(record.studentId)} • ${escapeHtml(record.mealType)} • ${escapeHtml(record.date)} ${escapeHtml(record.time)}</span>
+              <small>${escapeHtml(record.cookingType)} / ${escapeHtml(record.sweetnessLevel)} / ${escapeHtml(record.drinkType)}</small>
+              ${record.note ? `<em>${escapeHtml(record.note)}</em>` : ''}
+            </div>
+            <div class="record-actions">
+              <button type="button" class="edit-btn" data-action="edit" data-id="${escapeHtml(record.id)}">แก้ไข</button>
+              <button type="button" class="delete-btn" data-action="delete" data-id="${escapeHtml(record.id)}">ลบ</button>
+            </div>
+          </article>
+        `).join('');
+      }
+
+      function handleRecordAction(event) {
+        const button = event.target.closest('button[data-action]');
+
+        if (!button) {
+          return;
+        }
+
+        const id = button.dataset.id;
+
+        if (button.dataset.action === 'edit') {
+          openEditDialog(id);
+        }
+
+        if (button.dataset.action === 'delete') {
+          deleteRecord(id);
+        }
+      }
+
+      function openEditDialog(id) {
+        const record = state.records.find(item => item.id === id);
+
+        if (!record) {
+          showToast('ไม่พบรายการที่เลือก', 'error');
+          return;
+        }
+
+        setValue('editId', record.id);
+        setValue('editStudentId', record.studentId);
+        setValue('editDate', record.date);
+        setValue('editTime', String(record.time || '').slice(0, 5));
+        setValue('editMealType', record.mealType);
+        setValue('editFoodName', record.foodName);
+        setValue('editCookingType', record.cookingType);
+        setValue('editSweetnessLevel', record.sweetnessLevel);
+        setValue('editDrinkType', record.drinkType);
+        setValue('editNote', record.note);
+
+        document.getElementById('editDialog').showModal();
+      }
+
+      function closeEditDialog() {
+        document.getElementById('editDialog').close();
+      }
+
+      async function saveEdit(event) {
+        event.preventDefault();
+
+        const saveButton = document.getElementById('saveEditButton');
+        setButtonLoading(saveButton, true, 'กำลังบันทึก...');
+
+        try {
+          const result = await adminRequest({
+            action: 'adminUpdate',
+            id: getValue('editId'),
+            studentId: getValue('editStudentId'),
+            date: getValue('editDate'),
+            time: getValue('editTime'),
+            mealType: getValue('editMealType'),
+            foodName: getValue('editFoodName'),
+            cookingType: getValue('editCookingType'),
+            sweetnessLevel: getValue('editSweetnessLevel'),
+            drinkType: getValue('editDrinkType'),
+            note: getValue('editNote')
+          });
+
+          if (!result.ok) {
+            throw new Error(result.message || 'แก้ไขไม่สำเร็จ');
+          }
+
+          closeEditDialog();
+          showToast(result.message || 'แก้ไขรายการสำเร็จ', 'success');
+          loadRecords();
+
+        } catch (error) {
+          console.error(error);
+          showToast(error.message || 'แก้ไขไม่สำเร็จ', 'error');
+
+        } finally {
+          setButtonLoading(saveButton, false);
+        }
+      }
+
+      async function deleteRecord(id) {
+        const record = state.records.find(item => item.id === id);
+        const label = record ? `${record.foodName} (${record.studentId})` : id;
+
+        if (!confirm(`ต้องการลบรายการ "${label}" ใช่ไหม?`)) {
+          return;
+        }
+
+        setStatus('กำลังลบรายการ...', 'loading');
+
+        try {
+          const result = await adminRequest({
+            action: 'adminDelete',
+            id: id
+          });
+
+          if (!result.ok) {
+            throw new Error(result.message || 'ลบไม่สำเร็จ');
+          }
+
+          showToast(result.message || 'ลบรายการสำเร็จ', 'success');
+          loadRecords();
+
+        } catch (error) {
+          console.error(error);
+          setStatus(error.message || 'ลบไม่สำเร็จ', 'error');
+          showToast(error.message || 'ลบไม่สำเร็จ', 'error');
+        }
+      }
+
+      function adminRequest(payload) {
+        return apiRequest(Object.assign({}, payload, {
+          adminPin: state.adminPin
+        }));
+      }
+
+      async function apiRequest(payload) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+        try {
+          const response = await fetch(API_URL, {
+            method: 'POST',
+            redirect: 'follow',
+            credentials: 'omit',
+            headers: {
+              'Content-Type': 'text/plain;charset=utf-8'
+            },
+            body: JSON.stringify(payload),
+            signal: controller.signal
+          });
+
+          const text = await response.text();
+          let result = null;
+
+          try {
+            result = JSON.parse(text);
+          } catch (error) {
+            throw new Error('API ไม่ได้ส่งข้อมูล JSON กลับมา กรุณาตรวจสอบการ Deploy Web App');
+          }
+
+          if (!response.ok) {
+            throw new Error(result.message || `เชื่อมต่อ API ไม่สำเร็จ (${response.status})`);
+          }
+
+          return result;
+
+        } catch (error) {
+          if (error.name === 'AbortError') {
+            throw new Error('เชื่อมต่อฐานข้อมูลช้าเกินไป กรุณาลองอีกครั้ง');
+          }
+
+          throw error;
+
+        } finally {
+          clearTimeout(timer);
+        }
+      }
+
+      function setStatus(message, type) {
+        const card = document.querySelector('.status-card');
+        const text = document.getElementById('statusText');
+
+        card.classList.remove('loading', 'error', 'ready');
+        if (type) card.classList.add(type);
+        text.textContent = message;
+      }
+
+      function setButtonLoading(button, isLoading, loadingText) {
+        if (!button) return;
+
+        if (!button.dataset.defaultText) {
+          button.dataset.defaultText = button.textContent.trim();
+        }
+
+        button.disabled = isLoading;
+        button.textContent = isLoading ? loadingText : button.dataset.defaultText;
+      }
+
+      function setValue(id, value) {
+        document.getElementById(id).value = value || '';
+      }
+
+      function getValue(id) {
+        return document.getElementById(id).value.trim();
+      }
+
+      function showToast(message, type) {
+        const toast = document.getElementById('toast');
+
+        if (toastTimer) {
+          clearTimeout(toastTimer);
+        }
+
+        toast.textContent = message;
+        toast.className = `toast show ${type || 'success'}`;
+
+        toastTimer = setTimeout(() => {
+          toast.className = 'toast';
+        }, 3000);
+      }
+
+      function escapeHtml(value) {
+        return String(value || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+    </script>
+  </body>
+</html>

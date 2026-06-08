@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard | Student Healthy Food Tracker</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styldashboard.css" />
+  </head>
+  <body>
+    <header class="top-hero">
+      <nav class="top-nav">
+        <a class="brand" href="index.html" aria-label="กลับหน้าบันทึกอาหาร">
+          <span class="brand-mark">🍱</span>
+          <span>
+            <strong>Healthy Food Tracker</strong>
+            <small>power by e_ga</small>
+          </span>
+        </a>
+      </nav>
+
+      <section class="hero-grid">
+        <div>
+          <p class="eyebrow">เป้าหมายสิ้นเดือน มิถุนายน 2569 เหลือ 69 กิโลกรัม</p>
+          <h1>สรุปพฤติกรรมอาหารของ"จอร์จบุช"</h1>
+          <p class="hero-copy">
+            *ครั้งที่ 1 ชั่งน้ำหนัก 7/6/2569 ได้ 72 กิโลกรัม 
+          </p>
+        </div>
+
+        <div class="quick-card" id="todayCard">
+          <span>วันนี้</span>
+          <strong id="todayDate">-</strong>
+          <small id="todayScope">ภาพรวมทั้งหมด</small>
+        </div>
+      </section>
+    </header>
+
+    <main class="dashboard-shell">
+      <section class="control-panel">
+        <div class="period-tabs" role="tablist" aria-label="เลือกช่วงเวลา">
+          <button type="button" class="period-tab active" data-period="threeDays">3 วัน</button>
+          <button type="button" class="period-tab" data-period="week">สัปดาห์</button>
+          <button type="button" class="period-tab" data-period="month">เดือน</button>
+        </div>
+      </section>
+
+      <section class="status-strip" id="statusStrip">
+        <span class="status-dot"></span>
+        <span id="statusText">กำลังโหลดข้อมูลจากฐานข้อมูล...</span>
+      </section>
+
+      <section class="summary-grid">
+        <article class="score-panel">
+          <div class="score-ring" id="scoreRing" style="--score: 0">
+            <span id="scoreValue">0</span>
+          </div>
+          <div>
+            <p class="metric-label">คะแนนสมดุลอาหาร</p>
+            <h2 id="scoreTitle">ยังไม่มีข้อมูล</h2>
+            <p id="scoreAdvice">โหลดข้อมูลเพื่อดูคำแนะนำ</p>
+          </div>
+        </article>
+
+        <article class="metric-card">
+          <span class="metric-icon mint">🍽️</span>
+          <p class="metric-label">บันทึกทั้งหมด</p>
+          <strong id="metricTotal">0</strong>
+        </article>
+
+        <article class="metric-card">
+          <span class="metric-icon sky">🥗</span>
+          <p class="metric-label">เมนูไม่ซ้ำ</p>
+          <strong id="metricUnique">0</strong>
+        </article>
+
+        <article class="metric-card">
+          <span class="metric-icon water">💧</span>
+          <p class="metric-label">น้ำเปล่า</p>
+          <strong id="metricWater">0</strong>
+        </article>
+
+        <article class="metric-card caution-card">
+          <span class="metric-icon coral">🍟</span>
+          <p class="metric-label">ของทอด</p>
+          <strong id="metricFried">0</strong>
+        </article>
+
+        <article class="metric-card caution-card">
+          <span class="metric-icon honey">🥤</span>
+          <p class="metric-label">เครื่องดื่มหวาน</p>
+          <strong id="metricSweetDrink">0</strong>
+        </article>
+      </section>
+
+      <section class="content-grid">
+        <article class="panel trend-panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">แนวโน้ม</p>
+              <h2 id="periodTitle">3 วันล่าสุด</h2>
+            </div>
+            <span class="pill" id="periodTotal">0 รายการ</span>
+          </div>
+          <div class="day-chart" id="dayChart"></div>
+        </article>
+
+        <article class="panel advice-panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">คำแนะนำ</p>
+              <h2>ชวนกินให้สมดุล</h2>
+            </div>
+          </div>
+          <ul class="advice-list" id="adviceList"></ul>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">เมนูยอดนิยม</p>
+              <h2>อาหารที่บันทึกบ่อย</h2>
+            </div>
+          </div>
+          <div class="top-foods" id="topFoods"></div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">แยกตามประเภท</p>
+              <h2>มื้ออาหารและเครื่องดื่ม</h2>
+            </div>
+          </div>
+          <div class="split-bars" id="mealBars"></div>
+          <div class="split-bars" id="drinkBars"></div>
+        </article>
+      </section>
+
+      <section class="panel latest-panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">รายการล่าสุด</p>
+            <h2>บันทึกที่เพิ่งเพิ่ม</h2>
+          </div>
+        </div>
+        <div class="latest-list" id="latestList"></div>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script>
+      const API_URL = 'https://script.google.com/macros/s/AKfycbwLbAQhjBLCPa3x9JXppMIV6VL-Qad0QkT4yzKpBA74cI23wtNXx6lCnBF86V1yS2kInQ/exec';
+      const REQUEST_TIMEOUT_MS = 25000;
+
+      const state = {
+        activePeriod: 'threeDays',
+        dashboard: null
+      };
+
+      let toastTimer = null;
+
+      document.addEventListener('DOMContentLoaded', () => {
+        setToday();
+        bindEvents();
+        loadDashboard();
+      });
+
+      function bindEvents() {
+        document.querySelectorAll('.period-tab').forEach(button => {
+          button.addEventListener('click', () => {
+            state.activePeriod = button.dataset.period;
+            document.querySelectorAll('.period-tab').forEach(tab => tab.classList.remove('active'));
+            button.classList.add('active');
+            renderDashboard();
+          });
+        });
+      }
+
+      function setToday() {
+        const todayDate = document.getElementById('todayDate');
+        todayDate.textContent = new Date().toLocaleDateString('th-TH', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      }
+
+      async function loadDashboard() {
+        setStatus('กำลังโหลดข้อมูลจากฐานข้อมูล...', true);
+
+        try {
+          const result = await apiRequest({
+            action: 'dashboard',
+            studentId: ''
+          });
+
+          if (!result.ok) {
+            throw new Error(result.message || 'โหลดข้อมูลไม่สำเร็จ');
+          }
+
+          state.dashboard = result;
+          renderDashboard();
+          setStatus(`โหลดสำเร็จ ${formatDateTime(result.generatedAt)}`, false);
+          showToast('โหลดข้อมูลสำเร็จ', 'success');
+
+        } catch (error) {
+          console.error(error);
+          setStatus(error.message || 'โหลดข้อมูลไม่สำเร็จ', false, true);
+          showToast(error.message || 'โหลดข้อมูลไม่สำเร็จ', 'error');
+          renderEmptyDashboard();
+        }
+      }
+
+      async function apiRequest(payload) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+        try {
+          const response = await fetch(API_URL, {
+            method: 'POST',
+            redirect: 'follow',
+            credentials: 'omit',
+            headers: {
+              'Content-Type': 'text/plain;charset=utf-8'
+            },
+            body: JSON.stringify(payload),
+            signal: controller.signal
+          });
+
+          const text = await response.text();
+          let result = null;
+
+          try {
+            result = JSON.parse(text);
+          } catch (error) {
+            throw new Error('API ไม่ได้ส่งข้อมูล JSON กลับมา กรุณาตรวจสอบการ Deploy Web App');
+          }
+
+          if (!response.ok) {
+            throw new Error(result.message || `เชื่อมต่อ API ไม่สำเร็จ (${response.status})`);
+          }
+
+          return result;
+
+        } catch (error) {
+          if (error.name === 'AbortError') {
+            throw new Error('เชื่อมต่อฐานข้อมูลช้าเกินไป กรุณาลองอีกครั้ง');
+          }
+
+          throw error;
+
+        } finally {
+          clearTimeout(timer);
+        }
+      }
+
+      function renderDashboard() {
+        if (!state.dashboard || !state.dashboard.periods) {
+          renderEmptyDashboard();
+          return;
+        }
+
+        const period = state.dashboard.periods[state.activePeriod];
+        const stats = period.stats || {};
+        document.getElementById('todayScope').textContent = 'ภาพรวมทั้งหมด';
+        document.getElementById('periodTitle').textContent = period.label;
+        document.getElementById('periodTotal').textContent = `${period.total || 0} รายการ`;
+
+        setScore(stats.score || 0);
+        setText('metricTotal', stats.total || 0);
+        setText('metricUnique', stats.uniqueFoodCount || 0);
+        setText('metricWater', stats.waterCount || 0);
+        setText('metricFried', stats.friedCount || 0);
+        setText('metricSweetDrink', stats.sweetDrinkCount || 0);
+
+        renderDayChart(period.byDay || []);
+        renderAdvice(period);
+        renderTopFoods(period.topFoods || []);
+        renderSplitBars('mealBars', 'มื้ออาหาร', period.byMealType || {});
+        renderSplitBars('drinkBars', 'เครื่องดื่ม', period.byDrinkType || {});
+        renderLatest(period.latest || []);
+      }
+
+      function renderEmptyDashboard() {
+        setScore(0);
+        ['metricTotal', 'metricUnique', 'metricWater', 'metricFried', 'metricSweetDrink'].forEach(id => setText(id, 0));
+        document.getElementById('dayChart').innerHTML = emptyBlock('ยังไม่มีข้อมูลในช่วงเวลานี้');
+        document.getElementById('adviceList').innerHTML = '<li>โหลดข้อมูลหรือบันทึกอาหารก่อนเพื่อดูคำแนะนำ</li>';
+        document.getElementById('topFoods').innerHTML = emptyBlock('ยังไม่มีเมนูยอดนิยม');
+        document.getElementById('mealBars').innerHTML = '';
+        document.getElementById('drinkBars').innerHTML = '';
+        document.getElementById('latestList').innerHTML = emptyBlock('ยังไม่มีรายการล่าสุด');
+      }
+
+      function setScore(score) {
+        const scoreRing = document.getElementById('scoreRing');
+        const scoreValue = document.getElementById('scoreValue');
+        const scoreTitle = document.getElementById('scoreTitle');
+        const scoreAdvice = document.getElementById('scoreAdvice');
+
+        scoreRing.style.setProperty('--score', score);
+        scoreValue.textContent = score;
+
+        if (score >= 85) {
+          scoreTitle.textContent = 'สมดุลดีมาก';
+          scoreAdvice.textContent = 'รักษาจังหวะนี้ไว้ และเพิ่มผักผลไม้ให้หลากหลาย';
+        } else if (score >= 70) {
+          scoreTitle.textContent = 'อยู่ในเกณฑ์ดี';
+          scoreAdvice.textContent = 'ลดของทอดหรือเครื่องดื่มหวานบางมื้อจะดีขึ้นอีก';
+        } else if (score > 0) {
+          scoreTitle.textContent = 'ควรปรับเพิ่ม';
+          scoreAdvice.textContent = 'ลองเลือกน้ำเปล่าและเมนูต้ม นึ่ง ย่าง ให้มากขึ้น';
+        } else {
+          scoreTitle.textContent = 'ยังไม่มีข้อมูล';
+          scoreAdvice.textContent = 'บันทึกอาหารเพื่อเริ่มดูคะแนน';
+        }
+      }
+
+      function renderDayChart(rows) {
+        const maxCount = Math.max(1, ...rows.map(row => row.count || 0));
+
+        document.getElementById('dayChart').innerHTML = rows.map(row => {
+          const height = Math.max(8, Math.round(((row.count || 0) / maxCount) * 120));
+          return `
+            <div class="day-bar-wrap">
+              <span class="day-count">${row.count || 0}</span>
+              <div class="day-bar" style="height:${height}px"></div>
+              <span class="day-label">${formatShortDate(row.date)}</span>
+            </div>
+          `;
+        }).join('');
+      }
+
+      function renderAdvice(period) {
+        const stats = period.stats || {};
+        const items = [];
+
+        if (!stats.total) {
+          items.push('ยังไม่มีข้อมูลในช่วงนี้ ลองบันทึกอาหารมื้อแรกได้เลย');
+        } else {
+          if (stats.waterCount < Math.ceil(stats.total / 2)) {
+            items.push('เพิ่มน้ำเปล่าให้มากขึ้น โดยเฉพาะวันที่มีเครื่องดื่มหวาน');
+          }
+
+          if (stats.friedCount > 0) {
+            items.push('สลับเมนูทอดกับต้ม นึ่ง ย่าง หรืออบ เพื่อให้เบาสบายขึ้น');
+          }
+
+          if (stats.highSweetCount > 0 || stats.sweetDrinkCount > 0) {
+            items.push('ลดความหวานทีละนิด เช่น เลือกหวานน้อยหรือไม่หวาน');
+          }
+
+          if (stats.uniqueFoodCount <= 2 && stats.total >= 3) {
+            items.push('เพิ่มความหลากหลายของเมนู จะช่วยให้ได้สารอาหารครบขึ้น');
+          }
+
+          if (!items.length) {
+            items.push('ทำได้ดีมาก เลือกอาหารค่อนข้างสมดุลในช่วงนี้');
+          }
+        }
+
+        document.getElementById('adviceList').innerHTML = items
+          .map(item => `<li>${escapeHtml(item)}</li>`)
+          .join('');
+      }
+
+      function renderTopFoods(items) {
+        if (!items.length) {
+          document.getElementById('topFoods').innerHTML = emptyBlock('ยังไม่มีเมนูยอดนิยม');
+          return;
+        }
+
+        const maxCount = Math.max(1, ...items.map(item => item.count || 0));
+
+        document.getElementById('topFoods').innerHTML = items.map(item => `
+          <div class="food-rank">
+            <div>
+              <strong>${escapeHtml(item.name)}</strong>
+              <span>${item.count} ครั้ง</span>
+            </div>
+            <div class="mini-track">
+              <span style="width:${Math.round((item.count / maxCount) * 100)}%"></span>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      function renderSplitBars(containerId, title, data) {
+        const rows = Object.entries(data)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 6);
+
+        if (!rows.length) {
+          document.getElementById(containerId).innerHTML = '';
+          return;
+        }
+
+        const total = rows.reduce((sum, [, count]) => sum + count, 0) || 1;
+
+        document.getElementById(containerId).innerHTML = `
+          <h3>${escapeHtml(title)}</h3>
+          ${rows.map(([name, count]) => `
+            <div class="split-row">
+              <span>${escapeHtml(name)}</span>
+              <div class="split-track">
+                <i style="width:${Math.round((count / total) * 100)}%"></i>
+              </div>
+              <strong>${count}</strong>
+            </div>
+          `).join('')}
+        `;
+      }
+
+      function renderLatest(items) {
+        if (!items.length) {
+          document.getElementById('latestList').innerHTML = emptyBlock('ยังไม่มีรายการล่าสุด');
+          return;
+        }
+
+        document.getElementById('latestList').innerHTML = items.map(item => `
+          <article class="latest-item">
+            <div>
+              <strong>${escapeHtml(item.foodName)}</strong>
+              <span>${escapeHtml(item.mealType)} • ${escapeHtml(item.cookingType)} • ${escapeHtml(item.drinkType)}</span>
+            </div>
+            <time>${escapeHtml(item.date)} ${escapeHtml(item.time)}</time>
+          </article>
+        `).join('');
+      }
+
+      function setStatus(message, isLoading, isError) {
+        const strip = document.getElementById('statusStrip');
+        const text = document.getElementById('statusText');
+
+        strip.classList.toggle('loading', Boolean(isLoading));
+        strip.classList.toggle('error', Boolean(isError));
+        text.textContent = message;
+      }
+
+      function setText(id, value) {
+        document.getElementById(id).textContent = value;
+      }
+
+      function showToast(message, type) {
+        const toast = document.getElementById('toast');
+
+        if (toastTimer) {
+          clearTimeout(toastTimer);
+        }
+
+        toast.textContent = message;
+        toast.className = `toast show ${type || 'success'}`;
+
+        toastTimer = setTimeout(() => {
+          toast.className = 'toast';
+        }, 3000);
+      }
+
+      function emptyBlock(message) {
+        return `<div class="empty-block">${escapeHtml(message)}</div>`;
+      }
+
+      function formatShortDate(dateText) {
+        if (!dateText) return '-';
+        const [year, month, day] = dateText.split('-').map(Number);
+        return new Date(year, month - 1, day).toLocaleDateString('th-TH', {
+          day: 'numeric',
+          month: 'short'
+        });
+      }
+
+      function formatDateTime(value) {
+        return value ? `อัปเดต ${value}` : '';
+      }
+
+      function escapeHtml(value) {
+        return String(value || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+    </script>
+  </body>
+</html>
