@@ -1,291 +1,267 @@
-const {
-  canSync,
-  decodeId,
-  deleteRecord: deleteGoogleRecord,
-  encodeId,
-  escapeHtml,
-  fetchRecords,
-  getLocalRecords,
-  saveLocalRecords,
-  saveRecord: saveGoogleRecord,
-} = FoodTrackerApi;
+const API_URL = 'https://script.google.com/macros/s/AKfycbwLbAQhjBLCPa3x9JXppMIV6VL-Qad0QkT4yzKpBA74cI23wtNXx6lCnBF86V1yS2kInQ/exec';
 
-function pad(n) {
-  return String(n).padStart(2, '0');
+document.addEventListener('DOMContentLoaded', () => {
+  updateDateTime();
+  setInterval(updateDateTime, 1000);
+});
+
+function updateDateTime() {
+  const now = new Date();
+
+  const dateText = now.toLocaleDateString('th-TH', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  const timeText = now.toLocaleTimeString('th-TH', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+
+  const displayDate = document.getElementById('displayDate');
+  const displayTime = document.getElementById('displayTime');
+
+  if (displayDate) displayDate.textContent = dateText;
+  if (displayTime) displayTime.textContent = timeText;
 }
 
-function getThaiDate(d) {
-  const m = [
-    'ม.ค.',
-    'ก.พ.',
-    'มี.ค.',
-    'เม.ย.',
-    'พ.ค.',
-    'มิ.ย.',
-    'ก.ค.',
-    'ส.ค.',
-    'ก.ย.',
-    'ต.ค.',
-    'พ.ย.',
-    'ธ.ค.',
-  ];
-  return `${d.getDate()} ${m[d.getMonth()]} ${d.getFullYear() + 543}`;
+function showPage(pageName) {
+  document.querySelectorAll('.page').forEach(page => {
+    page.classList.remove('active');
+  });
+
+  const targetPage = document.getElementById('page-' + pageName);
+  if (targetPage) {
+    targetPage.classList.add('active');
+  }
+
+  document.querySelectorAll('.nav button').forEach(button => {
+    button.classList.remove('active');
+  });
+
+  const navButtons = document.querySelectorAll('.nav button');
+
+  if (pageName === 'log' && navButtons[0]) navButtons[0].classList.add('active');
+  if (pageName === 'history' && navButtons[1]) navButtons[1].classList.add('active');
+  if (pageName === 'summary' && navButtons[2]) navButtons[2].classList.add('active');
 }
 
 function getRadioValue(name) {
-  const el = document.querySelector(`input[name="${name}"]:checked`);
-  return el ? el.value : '';
+  const selected = document.querySelector(`input[name="${name}"]:checked`);
+  return selected ? selected.value : '';
 }
 
-function scoreRecord(r) {
-  let s = 5;
-  if (r.sweetnessLevel === 'หวานมาก') s -= 2;
-  else if (r.sweetnessLevel === 'หวานปกติ') s -= 1;
-  if (r.drinkType === 'น้ำอัดลม' || r.drinkType === 'ชานม') s -= 2;
-  else if (r.drinkType === 'น้ำหวาน') s -= 1;
-  if (r.cookingType === 'ทอด') s -= 1;
-  if (r.drinkType === 'น้ำเปล่า' || r.drinkType === 'นม') s = Math.min(5, s + 1);
-  return Math.max(1, Math.min(5, s));
+async function apiRequest(payload) {
+  const response = await fetch(API_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    headers: {
+      'Content-Type': 'text/plain;charset=utf-8'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const result = await response.json();
+  return result;
 }
 
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  if (!t) return;
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2600);
-}
+async function saveFoodLog() {
+  try {
+    const studentId = document.getElementById('studentId').value.trim();
+    const foodName = document.getElementById('foodName').value.trim();
+    const note = document.getElementById('note').value.trim();
 
-function getErrorMessage(err) {
-  return (err && err.message) || String(err || 'ไม่ทราบสาเหตุ');
-}
+    if (!studentId) {
+      showToast('กรุณากรอกรหัสนักเรียน', 'error');
+      return;
+    }
 
-function sweetClass(s) {
-  if (s === 'ไม่หวาน') return 'rc-sweet-none';
-  if (s === 'หวานน้อย') return 'rc-sweet-low';
-  if (s === 'หวานปกติ') return 'rc-sweet-med';
-  return 'rc-sweet-high';
-}
+    if (!foodName) {
+      showToast('กรุณากรอกชื่ออาหาร', 'error');
+      return;
+    }
 
-function stars(score) {
-  score = Math.round(score || 0);
-  return '⭐'.repeat(score) + '☆'.repeat(Math.max(0, 5 - score));
-}
+    const payload = {
+      action: 'create',
+      studentId: studentId,
+      mealType: getRadioValue('mealType'),
+      foodName: foodName,
+      cookingType: getRadioValue('cookingType'),
+      sweetnessLevel: getRadioValue('sweetnessLevel'),
+      drinkType: getRadioValue('drinkType'),
+      note: note
+    };
 
-function updateClock() {
-  if (!document.getElementById('displayDate')) return;
-  const now = new Date();
-  document.getElementById('displayDate').textContent = getThaiDate(now);
-  document.getElementById('displayTime').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())} น.`;
-}
+    const result = await apiRequest(payload);
 
-function showPage(name) {
-  document.querySelectorAll('.page').forEach((p) => p.classList.remove('active'));
-  document.querySelectorAll('.nav button').forEach((t) => t.classList.remove('active'));
-  document.getElementById('page-' + name).classList.add('active');
+    if (!result.ok) {
+      showToast(result.message || 'บันทึกไม่สำเร็จ', 'error');
+      return;
+    }
 
-  const idx = { log: 0, history: 1, summary: 2 }[name];
-  const navButton = document.querySelectorAll('.nav button')[idx];
-  if (navButton) navButton.classList.add('active');
+    showToast('บันทึกอาหารสำเร็จ', 'success');
 
-  const sid = document.getElementById('studentId').value.trim();
-  if (name === 'history') {
-    if (sid) document.getElementById('filterStudentId').value = sid;
-    loadHistory();
-  }
-  if (name === 'summary') {
-    if (sid) document.getElementById('summaryStudentId').value = sid;
-    loadSummary();
-  }
-}
-
-function saveFoodLog() {
-  const sid = document.getElementById('studentId').value.trim();
-  const foodName = document.getElementById('foodName').value.trim();
-
-  if (!sid) return showToast('⚠️ กรุณากรอกรหัสนักเรียนก่อนนะ');
-  if (!foodName) return showToast('⚠️ กรุณากรอกชื่ออาหารก่อนนะ');
-
-  const now = new Date();
-  const r = {
-    id: Date.now(),
-    studentId: sid,
-    date: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
-    time: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
-    thaiDate: getThaiDate(now),
-    mealType: getRadioValue('mealType'),
-    foodName,
-    cookingType: getRadioValue('cookingType'),
-    sweetnessLevel: getRadioValue('sweetnessLevel'),
-    drinkType: getRadioValue('drinkType'),
-    note: document.getElementById('note').value.trim(),
-  };
-  r.score = scoreRecord(r);
-
-  const records = getLocalRecords();
-  records.unshift(r);
-  saveLocalRecords(records);
-
-  const resetForm = () => {
     document.getElementById('foodName').value = '';
     document.getElementById('note').value = '';
-  };
-  const successMessage = `✅ บันทึกแล้ว! ${r.foodName} ${stars(r.score)}`;
 
-  if (!canSync()) {
-    resetForm();
-    showToast(successMessage);
+  } catch (error) {
+    console.error(error);
+    showToast('เชื่อมต่อฐานข้อมูลไม่สำเร็จ', 'error');
+  }
+}
+
+async function loadHistory() {
+  try {
+    const filterStudentId = document.getElementById('filterStudentId').value.trim();
+    const studentIdFromMain = document.getElementById('studentId').value.trim();
+    const studentId = filterStudentId || studentIdFromMain;
+
+    if (!studentId) {
+      showToast('กรุณากรอกรหัสนักเรียน', 'error');
+      return;
+    }
+
+    const result = await apiRequest({
+      action: 'history',
+      studentId: studentId
+    });
+
+    if (!result.ok) {
+      showToast(result.message || 'โหลดประวัติไม่สำเร็จ', 'error');
+      return;
+    }
+
+    renderHistory(result.data || []);
+
+  } catch (error) {
+    console.error(error);
+    showToast('โหลดประวัติไม่สำเร็จ', 'error');
+  }
+}
+
+function renderHistory(items) {
+  const historyList = document.getElementById('historyList');
+
+  if (!items.length) {
+    historyList.innerHTML = `
+      <div class="empty-state">
+        <div class="es-emoji">📋</div>
+        <p>ยังไม่มีประวัติการบันทึกอาหาร</p>
+      </div>
+    `;
     return;
   }
 
-  saveGoogleRecord(r)
-    .then(() => {
-      resetForm();
-      showToast(successMessage);
-    })
-    .catch((err) => {
-      resetForm();
-      showToast('บันทึกในเครื่องแล้ว แต่ส่งขึ้น Google ไม่สำเร็จ: ' + getErrorMessage(err));
-    });
+  historyList.innerHTML = items.map(item => `
+    <div class="history-card" style="background:#fff;border-radius:18px;padding:16px;margin-bottom:12px;box-shadow:0 8px 20px rgba(0,0,0,.08);">
+      <div style="font-weight:700;font-size:18px;">🍜 ${escapeHtml(item.foodName)}</div>
+      <div style="margin-top:6px;color:#555;">🎒 รหัสนักเรียน: ${escapeHtml(item.studentId)}</div>
+      <div style="margin-top:6px;color:#555;">📅 ${escapeHtml(item.date)} ⏰ ${escapeHtml(item.time)}</div>
+      <div style="margin-top:6px;color:#555;">🍽️ มื้อ: ${escapeHtml(item.mealType)} | 👨‍🍳 วิธีทำ: ${escapeHtml(item.cookingType)}</div>
+      <div style="margin-top:6px;color:#555;">🍬 ความหวาน: ${escapeHtml(item.sweetnessLevel)} | 🥤 เครื่องดื่ม: ${escapeHtml(item.drinkType)}</div>
+      ${item.note ? `<div style="margin-top:8px;color:#555;">📝 ${escapeHtml(item.note)}</div>` : ''}
+    </div>
+  `).join('');
 }
 
-function renderRecord(r) {
-  const note = r.note ? `<div class="rc-note">📝 ${escapeHtml(r.note)}</div>` : '';
+async function loadSummary() {
+  try {
+    const summaryStudentId = document.getElementById('summaryStudentId').value.trim();
+    const studentIdFromMain = document.getElementById('studentId').value.trim();
+    const studentId = summaryStudentId || studentIdFromMain;
+
+    if (!studentId) {
+      showToast('กรุณากรอกรหัสนักเรียน', 'error');
+      return;
+    }
+
+    const result = await apiRequest({
+      action: 'summary',
+      studentId: studentId
+    });
+
+    if (!result.ok) {
+      showToast(result.message || 'โหลดสรุปไม่สำเร็จ', 'error');
+      return;
+    }
+
+    renderSummary(result.summary);
+
+  } catch (error) {
+    console.error(error);
+    showToast('โหลดสรุปไม่สำเร็จ', 'error');
+  }
+}
+
+function renderSummary(summary) {
+  const summaryContent = document.getElementById('summaryContent');
+
+  if (!summary || summary.total === 0) {
+    summaryContent.innerHTML = `
+      <div class="empty-state">
+        <div class="es-emoji">📊</div>
+        <p>ยังไม่มีข้อมูลสำหรับสรุป</p>
+      </div>
+    `;
+    return;
+  }
+
+  summaryContent.innerHTML = `
+    <div style="background:#fff;border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:0 8px 20px rgba(0,0,0,.08);">
+      <h2 style="margin-bottom:10px;">📊 สรุปการกินอาหาร</h2>
+      <p style="font-size:18px;font-weight:700;">บันทึกทั้งหมด: ${summary.total} รายการ</p>
+    </div>
+
+    ${renderCountGroup('🍽️ สรุปตามมื้ออาหาร', summary.byMealType)}
+    ${renderCountGroup('👨‍🍳 สรุปตามวิธีทำอาหาร', summary.byCookingType)}
+    ${renderCountGroup('🍬 สรุปตามระดับความหวาน', summary.bySweetnessLevel)}
+    ${renderCountGroup('🥤 สรุปตามเครื่องดื่ม', summary.byDrinkType)}
+  `;
+}
+
+function renderCountGroup(title, data) {
+  const rows = Object.entries(data || {});
+
+  if (!rows.length) {
+    return '';
+  }
 
   return `
-    <div class="record-card">
-      <button class="rc-del" onclick="deleteFoodRecord('${encodeId(r.id)}')" title="ลบ">🗑️</button>
-
-      <div class="rc-top">
-        <div class="rc-food">${escapeHtml(r.foodName || '-')}</div>
-        <div class="rc-meal">${escapeHtml(r.mealType || '-')}</div>
-      </div>
-
-      <div class="rc-meta">
-        <span class="rc-badge rc-cook">👨‍🍳 ${escapeHtml(r.cookingType || '-')}</span>
-        <span class="rc-badge rc-drink">🥤 ${escapeHtml(r.drinkType || '-')}</span>
-        <span class="rc-badge ${sweetClass(r.sweetnessLevel)}">
-          🍬 ${escapeHtml(r.sweetnessLevel || '-')}
-        </span>
-      </div>
-
-      <div class="rc-dt">
-        📅 ${escapeHtml(r.thaiDate || r.date || '-')} ·
-        ⏰ ${escapeHtml(r.time || '-')} น. ·
-        ${stars(r.score || 3)}
-      </div>
-
-      ${note}
+    <div style="background:#fff;border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:0 8px 20px rgba(0,0,0,.08);">
+      <h3 style="margin-bottom:10px;">${title}</h3>
+      ${rows.map(([name, count]) => `
+        <div style="display:flex;justify-content:space-between;border-bottom:1px solid #eee;padding:8px 0;">
+          <span>${escapeHtml(name)}</span>
+          <strong>${count} ครั้ง</strong>
+        </div>
+      `).join('')}
     </div>
   `;
 }
 
-function loadHistory() {
-  const sid = document.getElementById('filterStudentId').value.trim();
-  fetchRecords(sid, (records) => {
-    const el = document.getElementById('historyList');
-    if (!records.length) {
-      el.innerHTML = '<div class="empty-state"><div class="es-emoji">🍽️</div><p>ยังไม่มีรายการสำหรับรหัสนี้</p></div>';
-      return;
-    }
-    el.innerHTML = `<div class="record-list">${records.map(renderRecord).join('')}</div>`;
-  });
-}
+function showToast(message, type) {
+  const toast = document.getElementById('toast');
 
-function deleteFoodRecord(rawId) {
-  const id = decodeId(rawId);
-  if (!confirm('ต้องการลบรายการนี้หรือเปล่า?')) return;
-
-  saveLocalRecords(getLocalRecords().filter((r) => String(r.id) !== String(id)));
-
-  if (!canSync()) {
-    loadHistory();
-    showToast('🗑️ ลบแล้ว');
+  if (!toast) {
+    alert(message);
     return;
   }
 
-  deleteGoogleRecord(id)
-    .then(() => {
-      loadHistory();
-      showToast('🗑️ ลบแล้ว');
-    })
-    .catch((err) => {
-      loadHistory();
-      showToast('ลบในเครื่องแล้ว แต่ลบจาก Google ไม่สำเร็จ: ' + getErrorMessage(err));
-    });
+  toast.textContent = message;
+  toast.className = 'toast show ' + (type || 'success');
+
+  setTimeout(() => {
+    toast.className = 'toast';
+  }, 3000);
 }
 
-function loadSummary() {
-  const sid = document.getElementById('summaryStudentId').value.trim();
-  fetchRecords(sid, (records) => {
-    const el = document.getElementById('summaryContent');
-    if (!records.length) {
-      el.innerHTML = '<div class="empty-state"><div class="es-emoji">📊</div><p>ยังไม่มีข้อมูลสำหรับรหัสนี้</p></div>';
-      return;
-    }
-
-    const avg = (records.reduce((a, r) => a + (Number(r.score) || 3), 0) / records.length).toFixed(1);
-    const water = records.filter((r) => r.drinkType === 'น้ำเปล่า' || r.drinkType === 'นม').length;
-    const waterPct = Math.round((water / records.length) * 100);
-    const count = { cook: {}, drink: {}, sweet: {} };
-
-    records.forEach((r) => {
-      count.cook[r.cookingType || '-'] = (count.cook[r.cookingType || '-'] || 0) + 1;
-      count.drink[r.drinkType || '-'] = (count.drink[r.drinkType || '-'] || 0) + 1;
-      count.sweet[r.sweetnessLevel || '-'] = (count.sweet[r.sweetnessLevel || '-'] || 0) + 1;
-    });
-
-    const topCook = Object.entries(count.cook).sort((a, b) => b[1] - a[1])[0];
-    const recent = [...new Set(records.slice(0, 10).map((r) => r.foodName).filter(Boolean))].slice(0, 5);
-
-    const recentChips = recent
-      .map((f) => `<span class="chip">${escapeHtml(f)}</span>`)
-      .join('');
-
-    const drinkChips = Object.entries(count.drink)
-      .sort((a, b) => b[1] - a[1])
-      .map(([k, v]) => `<span class="chip">${escapeHtml(k)} (${v})</span>`)
-      .join('');
-
-    const sweetChips = Object.entries(count.sweet)
-      .sort((a, b) => b[1] - a[1])
-      .map(([k, v]) => `<span class="chip">${escapeHtml(k)} (${v})</span>`)
-      .join('');
-
-    el.innerHTML = `
-      <div class="stats-grid summary-stats-grid">
-        <div class="stat-box">
-          <div class="stat-num">${records.length}</div>
-          <div class="stat-lbl">บันทึกทั้งหมด</div>
-        </div>
-
-        <div class="stat-box">
-          <div class="stat-num">${avg}</div>
-          <div class="stat-lbl">⭐ คะแนนเฉลี่ย</div>
-        </div>
-
-        <div class="stat-box">
-          <div class="stat-num">${waterPct}%</div>
-          <div class="stat-lbl">💧 ดื่มน้ำดี</div>
-        </div>
-
-        <div class="stat-box">
-          <div class="stat-num">${topCook ? escapeHtml(topCook[0]) : '—'}</div>
-          <div class="stat-lbl">👨‍🍳 วิธีทำบ่อยสุด</div>
-        </div>
-      </div>
-
-      <div class="sec-title">🍜 เมนูล่าสุด</div>
-      <div class="chip-group summary-chip-row">${recentChips}</div>
-
-      <div class="sec-title">🥤 เครื่องดื่มที่ดื่มบ่อย</div>
-      <div class="chip-group summary-chip-row">${drinkChips}</div>
-
-      <div class="sec-title">🍬 ความหวานที่เลือก</div>
-      <div class="chip-group">${sweetChips}</div>
-    `;
-  });
+function escapeHtml(value) {
+  return String(value || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
 }
-
-updateClock();
-setInterval(updateClock, 30000);
