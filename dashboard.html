@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard | Student Healthy Food Tracker</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+
+  <body>
+    <div class="header">
+      <span class="header-emoji">📈</span>
+      <h1>Dashboard สุขภาพอาหาร</h1>
+      <p>ภาพรวมพฤติกรรมการกินจากข้อมูลที่บันทึกไว้</p>
+    </div>
+
+    <main class="shell">
+      <section>
+        <div class="topbar">
+          <div class="filter-row">
+            <input
+              type="text"
+              id="studentId"
+              placeholder="กรอกรหัสนักเรียน หรือเว้นว่างเพื่อดูทั้งหมด"
+            />
+            <button class="btn-green" onclick="loadDashboard()">โหลด Dashboard</button>
+          </div>
+          <a class="btn-light" href="index.html">← กลับหน้าบันทึก</a>
+        </div>
+
+        <div id="dashboardContent"></div>
+        <div class="footer-note">เก็บข้อมูลใน Google Sheet ชื่อ FoodLogs และสำรองใน localStorage</div>
+      </section>
+    </main>
+
+    <script src="js/google-api.js"></script>
+    <script src="js/dashboard.js"></script>
+  </body>
+</html>

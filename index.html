@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>บันทึกอาหาร | Student Healthy Food Tracker</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+
+  <body>
+    <div class="header">
+      <span class="header-emoji">🍱</span>
+      <h1>บันทึกอาหารของฉัน</h1>
+      <p>กินดี สุขภาพดี เติบโตแข็งแรง 💪</p>
+    </div>
+
+    <div class="nav">
+      <button class="active" onclick="showPage('log')">
+        ✏️<br />
+        บันทึกอาหาร
+      </button>
+      <button onclick="showPage('history')">
+        📋<br />
+        ประวัติ
+      </button>
+      <button onclick="showPage('summary')">
+        📊<br />
+        สรุป
+      </button>
+      <a href="dashboard.html">
+        📈<br />
+        Dashboard
+      </a>
+    </div>
+
+    <div class="content">
+      <div class="page active" id="page-log">
+        <div class="id-bar">
+          <label>🎒 รหัสนักเรียน</label>
+          <input type="text" id="studentId" placeholder="เช่น S001" maxlength="20" />
+        </div>
+
+        <div class="dt-row">
+          <div class="dt-box">
+            <div class="dt-lbl">📅 วันที่</div>
+            <div class="dt-val" id="displayDate">—</div>
+          </div>
+          <div class="dt-box">
+            <div class="dt-lbl">⏰ เวลา</div>
+            <div class="dt-val" id="displayTime">—</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div class="form-label">🍽️ มื้ออาหาร</div>
+          <div class="chip-group">
+            <label class="chip-label meal-chip">
+              <input type="radio" name="mealType" value="เช้า" checked />
+              <span class="chip">🌅 เช้า</span>
+            </label>
+            <label class="chip-label meal-chip">
+              <input type="radio" name="mealType" value="กลางวัน" />
+              <span class="chip">☀️ กลางวัน</span>
+            </label>
+            <label class="chip-label meal-chip">
+              <input type="radio" name="mealType" value="เย็น" />
+              <span class="chip">🌙 เย็น</span>
+            </label>
+            <label class="chip-label meal-chip">
+              <input type="radio" name="mealType" value="ของว่าง" />
+              <span class="chip">🍪 ของว่าง</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div class="form-label">🍜 ชื่ออาหาร <span class="required-mark">*</span></div>
+          <input
+            type="text"
+            class="text-input"
+            id="foodName"
+            placeholder="เช่น ข้าวต้ม, ผัดกะเพรา, ก๋วยเตี๋ยว..."
+          />
+        </div>
+
+        <div class="form-group">
+          <div class="form-label">👨‍🍳 วิธีทำอาหาร</div>
+          <div class="chip-group">
+            <label class="chip-label">
+              <input type="radio" name="cookingType" value="ต้ม" checked />
+              <span class="chip">🫕 ต้ม</span>
+            </label>
+            <label class="chip-label">
+              <input type="radio" name="cookingType" value="นึ่ง" />
+              <span class="chip">🥟 นึ่ง</span>
+            </label>
+            <label class="chip-label">
+              <input type="radio" name="cookingType" value="ย่าง" />
+              <span class="chip">🔥 ย่าง</span>
+            </label>
+            <label class="chip-label">
+              <input type="radio" name="cookingType" value="ผัด" />
+              <span class="chip">🥘 ผัด</span>
+            </label>
+            <label class="chip-label">
+              <input type="radio" name="cookingType" value="ทอด" />
+              <span class="chip">🍳 ทอด</span>
+            </label>
+            <label class="chip-label">
+              <input type="radio" name="cookingType" value="อบ" />
+              <span class="chip">🫓 อบ</span>
+            </label>
+            <label class="chip-label">
+              <input type="radio" name="cookingType" value="อื่น ๆ" />
+              <span class="chip">🍽️ อื่น ๆ</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div class="form-label">🍬 ระดับความหวาน</div>
+          <div class="chip-group">
+            <label class="chip-label sweet-chip">
+              <input type="radio" name="sweetnessLevel" value="ไม่หวาน" checked />
+              <span class="chip">🌿 ไม่หวาน</span>
+            </label>
+            <label class="chip-label sweet-chip">
+              <input type="radio" name="sweetnessLevel" value="หวานน้อย" />
+              <span class="chip">🍃 หวานน้อย</span>
+            </label>
+            <label class="chip-label sweet-chip">
+              <input type="radio" name="sweetnessLevel" value="หวานปกติ" />
+              <span class="chip">🍯 หวานปกติ</span>
+            </label>
+            <label class="chip-label sweet-chip">
+              <input type="radio" name="sweetnessLevel" value="หวานมาก" />
+              <span class="chip">🍭 หวานมาก</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div class="form-label">🥤 เครื่องดื่ม</div>
+          <div class="chip-group">
+            <label class="chip-label drink-chip">
+              <input type="radio" name="drinkType" value="น้ำเปล่า" checked />
+              <span class="chip">💧 น้ำเปล่า</span>
+            </label>
+            <label class="chip-label drink-chip">
+              <input type="radio" name="drinkType" value="นม" />
+              <span class="chip">🥛 นม</span>
+            </label>
+            <label class="chip-label drink-chip">
+              <input type="radio" name="drinkType" value="น้ำหวาน" />
+              <span class="chip">🍹 น้ำหวาน</span>
+            </label>
+            <label class="chip-label drink-chip">
+              <input type="radio" name="drinkType" value="น้ำอัดลม" />
+              <span class="chip">🥤 น้ำอัดลม</span>
+            </label>
+            <label class="chip-label drink-chip">
+              <input type="radio" name="drinkType" value="ชานม" />
+              <span class="chip">🧋 ชานม</span>
+            </label>
+            <label class="chip-label drink-chip">
+              <input type="radio" name="drinkType" value="กาแฟ" />
+              <span class="chip">☕ กาแฟ</span>
+            </label>
+            <label class="chip-label drink-chip">
+              <input type="radio" name="drinkType" value="อื่น ๆ" />
+              <span class="chip">🫗 อื่น ๆ</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div class="form-label">📝 หมายเหตุ</div>
+          <textarea
+            class="text-input"
+            id="note"
+            placeholder="เช่น เพิ่มผัก / ลดน้ำหวาน / กินผลไม้ด้วย..."
+          ></textarea>
+        </div>
+
+        <button class="btn-save" onclick="saveFoodLog()">💾 บันทึกอาหาร</button>
+      </div>
+
+      <div class="page" id="page-history">
+        <div class="filter-row">
+          <input type="text" id="filterStudentId" placeholder="🔍 ค้นหาด้วยรหัสนักเรียน..." />
+          <button class="btn-load" onclick="loadHistory()">โหลด</button>
+        </div>
+        <div id="historyList">
+          <div class="empty-state">
+            <div class="es-emoji">📋</div>
+            <p>กรอกรหัสนักเรียน แล้วกด โหลด</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="page" id="page-summary">
+        <div class="filter-row">
+          <input type="text" id="summaryStudentId" placeholder="🔍 รหัสนักเรียน..." />
+          <button class="btn-load" onclick="loadSummary()">โหลด</button>
+        </div>
+        <div id="summaryContent">
+          <div class="empty-state">
+            <div class="es-emoji">📊</div>
+            <p>กรอกรหัสนักเรียน แล้วกด โหลด</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script src="js/google-api.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>
