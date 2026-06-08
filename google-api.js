@@ -102,7 +102,7 @@ function getLocalRecords() {
         settled = true;
         clearTimeout(timer);
         cleanup();
-        reject(new Error('โหลดข้อมูลจาก Google Script ไม่สำเร็จ'));
+        reject(new Error('Google Script เข้าถึงไม่ได้ ให้ตั้งค่า Web app เป็น Execute as: Me และ Who has access: Anyone'));
       };
 
       script.src = url.toString();
